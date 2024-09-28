@@ -21,13 +21,11 @@
     .app {
       max-width: 400px;
       margin: 0 auto;
-      border: var(--border);
-      border-radius: 12px;
-      padding: 16px;
     }
 
     .brand {
       margin: 0;
+      margin-top: 32px;
       font-size: 1.2rem;
     }
 
@@ -38,6 +36,7 @@
       margin-top: 16px;
       min-height: 48px;
       padding: 16px;
+      background-color: #eee;
     }
 
     .result {
@@ -68,6 +67,7 @@
       display: flex;
       flex-direction: column;
       justify-content: space-between;
+      border-color: black;
     }
 
     .repo-card__title {
@@ -101,9 +101,7 @@
       margin-right: 2px;
     }
 
-    .retry-button {
-      background-color: #dc2626;
-      color: white;
+    .button {
       border-radius: 8px;
       height: 48px;
       display: block;
@@ -111,10 +109,25 @@
       border: none;
       width: 100%;
       font-weight: 600;
+    }
+
+    .retry-button {
+      background-color: #dc2626;
+      color: white;
+      display: none;
+    }
+
+    .refresh-button {
+      background-color: black;
+      color: white;
       display: none;
     }
 
     .app[data-state=error] .retry-button {
+      display: block;
+    }
+
+    .app[data-state=success] .refresh-button {
       display: block;
     }
   </style>
@@ -128,7 +141,8 @@
     <div class="result js-result">
       <p class="result__text js-result-text">Please select a language</p>
     </div>
-    <button class="retry-button js-retry-button">Click to retry</button>
+    <button class="button retry-button js-retry-button">Click to retry</button>
+    <button class="button refresh-button js-refresh-button">Refresh</button>
   </div>
 
   <script>
@@ -136,7 +150,9 @@
     const languageSelectElement = document.querySelector('.js-language-select')
     const resultElement = document.querySelector('.js-result')
     const retryButton = document.querySelector('.js-retry-button')
+    const refreshButton = document.querySelector('.js-refresh-button')
 
+    let items = []
     let repo = null
     let state = '' // '' | 'loading' | 'error' | 'success'
 
@@ -147,15 +163,15 @@
       render()
     }
 
-    async function fetchRandomRepository(language) {
+    async function fetchRepositories(language) {
       setState('loading')
 
       try {
-        const res = await fetch(`https://api.github.com/search/repositories?q=language:${language}`)
+        const res = await fetch(`https://api.github.com/search/repositories?q=language:${language}&per_page=100`)
         const result = await res.json()
 
         if (result && result.items && result.items.length > 0) {
-          return result.items[Math.floor(Math.random() * result.items.length)]
+          return result.items
         }
 
         setState('error')
@@ -167,17 +183,33 @@
       }
     }
 
+    function getRandomRepository(language) {
+      return items[Math.floor(Math.random() * items.length)]
+    }
+
     languageSelectElement.addEventListener('change', async () => {
+      items = await fetchRepositories(languageSelectElement.value)
       update()
     })
 
-    retryButton.addEventListener('click', () => {
+    retryButton.addEventListener('click', async () => {
+      items = await fetchRepositories(languageSelectElement.value)
+      update()
+    })
+
+    refreshButton.addEventListener('click', () => {
       update()
     })
 
     async function update() {
       repo = null
-      repo = await fetchRandomRepository(languageSelectElement.value)
+
+      if (!items) {
+        setState('error')
+        return
+      }
+
+      repo = getRandomRepository()
 
       if (!repo) {
         setState('error')
