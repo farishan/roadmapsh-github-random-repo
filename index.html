@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GitHub Random Repository</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    :root {
+      --border: 1px solid;
+    }
+
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+      color: #222;
+    }
+
+    .app {
+      max-width: 400px;
+      margin: 0 auto;
+      border: var(--border);
+      border-radius: 12px;
+      padding: 16px;
+    }
+
+    .brand {
+      margin: 0;
+      font-size: 1.2rem;
+    }
+
+    .language-select {
+      width: 100%;
+      border: var(--border);
+      border-radius: 8px;
+      margin-top: 16px;
+      min-height: 48px;
+      padding: 16px;
+    }
+
+    .result {
+      border: var(--border);
+      min-height: 200px;
+      background-color: #eee;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-top: 16px;
+      border-radius: 8px;
+      padding: 16px;
+      border-color: #eee;
+    }
+
+    .app[data-state=success] .result {
+      align-items: start;
+    }
+
+    .app[data-state=error] .result {
+      background-color: #fecaca;
+      border-color: #fecaca;
+    }
+
+    .app[data-state=success] .result {
+      width: 100%;
+      height: auto;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .repo-card__title {
+      margin: 0;
+      word-break: break-all;
+    }
+
+    .repo-card__footer {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .repo-stats {
+      display: flex;
+      align-items: center;
+    }
+
+    .repo-stats__item {
+      margin-left: 8px;
+      display: flex;
+      align-items: center;
+    }
+
+    .repo-stats__item:first-of-type {
+      margin-left: 0;
+    }
+
+    .repo-stats__item svg {
+      margin-right: 2px;
+    }
+
+    .retry-button {
+      background-color: #dc2626;
+      color: white;
+      border-radius: 8px;
+      height: 48px;
+      display: block;
+      margin-top: 8px;
+      border: none;
+      width: 100%;
+      font-weight: 600;
+      display: none;
+    }
+
+    .app[data-state=error] .retry-button {
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <div class="app js-app">
+    <h1 class="brand">GitHub Random Repository</h1>
+    <select class="language-select js-language-select">
+      <option value="" selected disabled hidden>Select a language</option>
+    </select>
+    <div class="result js-result">
+      <p class="result__text js-result-text">Please select a language</p>
+    </div>
+    <button class="retry-button js-retry-button">Click to retry</button>
+  </div>
+
+  <script>
+    const appElement = document.querySelector('.js-app')
+    const languageSelectElement = document.querySelector('.js-language-select')
+    const resultElement = document.querySelector('.js-result')
+    const retryButton = document.querySelector('.js-retry-button')
+
+    let repo = null
+    let state = '' // '' | 'loading' | 'error' | 'success'
+
+    function setState(newState) {
+      state = newState
+      appElement.dataset.state = newState
+
+      render()
+    }
+
+    async function fetchRandomRepository(language) {
+      setState('loading')
+
+      try {
+        const res = await fetch(`https://api.github.com/search/repositories?q=language:${language}`)
+        const result = await res.json()
+
+        if (result && result.items && result.items.length > 0) {
+          return result.items[Math.floor(Math.random() * result.items.length)]
+        }
+
+        setState('error')
+        return
+      } catch (error) {
+        console.error(error)
+        setState('error')
+        return
+      }
+    }
+
+    languageSelectElement.addEventListener('change', async () => {
+      update()
+    })
+
+    retryButton.addEventListener('click', () => {
+      update()
+    })
+
+    async function update() {
+      repo = null
+      repo = await fetchRandomRepository(languageSelectElement.value)
+
+      if (!repo) {
+        setState('error')
+        return
+      }
+
+      setState('success')
+    }
+
+    function generateRepoHTML() {
+      if (!repo) return
+
+      return `
+        <div>
+          <h2 class="repo-card__title">
+            <a href="${repo.html_url}" target="_blank">${repo.name}</a>
+          </h2>
+          <p class="repo-card__description">${repo.description}</p>
+        </div>
+        <div class="repo-card__footer">
+          <div>${repo.language}</div>
+          <div class="repo-stats">
+            <div class="repo-stats__item">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-star"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+              ${repo.stargazers_count}
+            </div>
+            <div class="repo-stats__item">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-git-fork"><circle cx="12" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><circle cx="18" cy="6" r="3"/><path d="M18 9v2c0 .6-.4 1-1 1H7c-.6 0-1-.4-1-1V9"/><path d="M12 12v3"/></svg>
+              ${repo.forks_count}
+            </div>
+            <div class="repo-stats__item">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-dot"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="1"/></svg>
+              ${repo.open_issues_count}
+            </div>
+          </div>
+        </div>
+      `
+    }
+
+    function render() {
+      resultElement.innerHTML = ''
+
+      const resultTextElement = document.createElement('p')
+
+      if (state == 'loading') {
+        resultTextElement.innerHTML = 'Loading, please wait...'
+        resultElement.append(resultTextElement)
+      }
+
+      else if (state == 'error') {
+        resultTextElement.innerHTML = 'Error fetching repositories'
+        resultElement.append(resultTextElement)
+      }
+
+      else if (state == 'success') {
+        resultElement.innerHTML = ''
+        const repoCardHTML = generateRepoHTML()
+        if (!repoCardHTML) {
+          console.error('Unknown repository card element', repo)
+          return
+        }
+
+        resultElement.innerHTML = repoCardHTML
+        // resultElement.appendChild(repositoryCardElement)
+      }
+
+      else {}
+    }
+
+    async function main() {
+      try {
+        const languagesRes = await fetch('https://raw.githubusercontent.com/kamranahmedse/githunt/master/src/components/filters/language-filter/languages.json');
+        const languages = await languagesRes.json()
+
+        languages.forEach(language => {
+          const optionElement = document.createElement('option')
+          optionElement.value = language.value
+          optionElement.innerText = language.title
+          languageSelectElement.appendChild(optionElement)
+        });
+      } catch (error) {
+        console.error(error)
+      }
+    }
+
+    main()
+  </script>
+</body>
+</html>
